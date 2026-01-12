@@ -1,0 +1,51 @@
+version: '3'
+
+x-spark-common: &spark-common
+  image: apache/spark:3.5.1
+  volumes:
+    - ./jobs:/opt/spark/jobs
+    - ./ivy-cache:/tmp/.ivy2
+    - ./input:/opt/spark/input
+  command: >
+    /opt/spark/bin/spark-class
+    org.apache.spark.deploy.worker.Worker
+    spark://spark-master:7077
+  depends_on:
+    - spark-master
+  environment:
+    SPARK_MODE: Worker
+    SPARK_JARS_IVY: /tmp/.ivy2
+    SPARK_WORKER_CORES: 2
+    SPARK_WORKER_MEMORY: 1g
+    SPARK_MASTER_URL: spark://spark-master:7077
+  networks:
+    - spark_data_process
+
+services:
+  spark-master:
+    image: apache/spark:3.5.1
+    container_name: spark-master
+    hostname: spark-master
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_JARS_IVY: /tmp/.ivy2
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.master.Master
+    ports:
+      - "7077:7077"
+      - "9090:8080"
+    volumes:
+      - ./jobs:/opt/spark/jobs
+      - ./ivy-cache:/tmp/.ivy2
+      - ./input:/opt/spark/input
+    networks:
+      - spark_data_process
+
+  spark-worker-1:
+    <<: *spark-common
+  spark-worker-2:
+    <<: *spark-common
+
+networks:
+    spark_data_process:
